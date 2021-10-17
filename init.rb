@@ -2,15 +2,20 @@
   Gosu Game Jam October 2021
   Theme : Chaos
 
-  logistique / transport :
-  - des camions arrivent avec du vrac à décharger / trier ?
-  - mécanique similaire à l'autre jeu où il faut prendre les colis par 1/2/3 ?
-  - lancé de colis ? avec peut être notion risk / reward ? (colis endommagé)
-  - colis par couleur pour représenter une zone de destination ?
-  - possibilité d'utiliser une chaine ?
+  camion arrive : colis tombent en vrac
+  on a une chaine
+  on a des palettes 
+  
+  gameplay :
+  activer / désactiver chaine
+  poser colis sur chaine
+  lancer colis vers opérateur
+  activer opérateur
 =end
 
 require 'gosu'
+
+$tile_size = 16
 
 class Position
   attr_accessor :x, :y, :z
@@ -31,6 +36,37 @@ class Parcel
   end
 end
 
+class Conveyor
+  @@gfx = Gosu::Image.load_tiles('./gfx/conveyor.png', 16, 32, retro: true)
+
+  def initialize
+    @current_frame = 0
+    @frame_duration = 100
+    @frame_tick = Gosu::milliseconds
+    @pieces_tiles = []
+  end
+
+  def add_piece(tile_position)
+    @pieces_tiles.push tile_position
+  end
+
+  def update
+    if Gosu::milliseconds - @frame_tick >= @frame_duration
+      @current_frame += 1
+      @current_frame = 0 if @current_frame >= @@gfx.size
+      @frame_tick = Gosu::milliseconds
+    end
+  end
+
+  def draw
+    @pieces_tiles.each do |coordinates|
+      x = coordinates.x * $tile_size
+      y = coordinates.y * $tile_size
+      @@gfx[@current_frame].draw(x, y, 0)
+    end
+  end
+end
+
 class Pallet
   @@gfx = Gosu::Image.new('./gfx/pallet.png', retro: true)
   def initialize(position)
@@ -44,12 +80,12 @@ class Pallet
   end
 
   def draw
-    @@gfx.draw(@position.x, @position.y, @position.z)
+    @@gfx.draw(@position.x * $tile_size, @position.y * $tile_size, @position.z)
     slice = 0
     height = 0
     x, y = 0, -3
     @parcels.each_with_index do |parcel, i|
-      parcel.draw(Position.new(@position.x + x, @position.y + y, 0))
+      parcel.draw(Position.new(@position.x * $tile_size + x, @position.y * $tile_size + y, 0))
       y += 5
       slice += 1
       
@@ -85,13 +121,22 @@ class Window < Gosu::Window
 
   def update
     unless defined?(@pallet)
-      @pallet = Pallet.new(Position.new(16, 48, 0))
+      @pallet = Pallet.new(Position.new(1, 1))
+      @conveyor = Conveyor.new
+      @conveyor.add_piece(Position.new(2, 4))
+      @conveyor.add_piece(Position.new(3, 4))
+      @conveyor.add_piece(Position.new(4, 4))
+      @conveyor.add_piece(Position.new(5, 4))
     end
+
+    @conveyor.update
   end
 
   def draw
-    scale(4, 4) do
+    zoom = 2
+    scale(zoom, zoom) do
       @pallet.draw
+      @conveyor.draw
     end
   end
 end
