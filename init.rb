@@ -47,21 +47,21 @@ class Pallet
     @@gfx.draw(@position.x, @position.y, @position.z)
     slice = 0
     height = 0
-    x, y = 0, 1
+    x, y = 0, -3
     @parcels.each_with_index do |parcel, i|
       parcel.draw(Position.new(@position.x + x, @position.y + y, 0))
-      y += 4
+      y += 5
       slice += 1
       
       # 5 boxes side by side
       if slice == 5
         x += 8
-        y = 1 - height
+        y = -3 - height
       # we can place up to 10 boxes on one slice
       elsif slice >= 10
         slice = 0
-        height += 3
-        x, y = 0, 1 - height
+        height += 4
+        x, y = 0, -3 - height
       end
     end
   end
@@ -78,7 +78,8 @@ class Window < Gosu::Window
     close! if id == Gosu::KB_ESCAPE
 
     if id == Gosu::KB_SPACE
-      @pallet.add_parcel(Parcel.new(Gosu::Color::RED, Position.new))
+      colors = [Gosu::Color::RED, Gosu::Color::GREEN, Gosu::Color::BLUE]
+      @pallet.add_parcel(Parcel.new(colors.sample, Position.new))
     end
   end
 
