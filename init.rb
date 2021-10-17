@@ -11,6 +11,7 @@
   poser colis sur chaine
   lancer colis vers opérateur
   activer opérateur
+
 =end
 
 require 'gosu'
@@ -38,12 +39,45 @@ end
 
 class Conveyor
   @@gfx = Gosu::Image.load_tiles('./gfx/conveyor.png', 16, 32, retro: true)
+  @@control_panel = {
+    speed_1: Gosu::Image.new('./gfx/conveyor_control_panel/speed_1.png'),
+    speed_2: Gosu::Image.new('./gfx/conveyor_control_panel/speed_2.png'),
+    speed_3: Gosu::Image.new('./gfx/conveyor_control_panel/speed_3.png'),
+    speed_stop: Gosu::Image.new('./gfx/conveyor_control_panel/stop.png')
+  }
 
-  def initialize
+  def initialize(window)
+    @window = window
+    set_speed(1)
     @current_frame = 0
-    @frame_duration = 100
     @frame_tick = Gosu::milliseconds
     @pieces_tiles = []
+
+    @ui_position = Position.new(0, @window.height - @@control_panel[:speed_1].height, 1)
+  end
+
+  def set_speed(speed)
+    @speed = speed
+    @frame_duration = case speed
+    when 0 then 0
+    when 1 then 400
+    when 2 then 200
+    when 3 then 50
+    end
+  end
+
+  def button_down(id)
+    if id == Gosu::MS_LEFT
+      if @window.mouse_in?(@ui_position.x + 58, @ui_position.y + 123, 36, 36)
+        set_speed(1)
+      elsif @window.mouse_in?(@ui_position.x + 101, @ui_position.y + 123, 36, 36)
+        set_speed(2)
+      elsif @window.mouse_in?(@ui_position.x + 144, @ui_position.y + 123, 36, 36)
+        set_speed(3)
+      elsif @window.mouse_in?(@ui_position.x + 188, @ui_position.y + 123, 128, 36)
+        set_speed(0)
+      end
+    end
   end
 
   def add_piece(tile_position)
@@ -51,9 +85,13 @@ class Conveyor
   end
 
   def update
-    if Gosu::milliseconds - @frame_tick >= @frame_duration
-      @current_frame += 1
-      @current_frame = 0 if @current_frame >= @@gfx.size
+    if @speed > 0 
+      if Gosu::milliseconds - @frame_tick >= @frame_duration
+        @current_frame += 1
+        @current_frame = 0 if @current_frame >= @@gfx.size
+        @frame_tick = Gosu::milliseconds
+      end
+    else
       @frame_tick = Gosu::milliseconds
     end
   end
@@ -64,6 +102,17 @@ class Conveyor
       y = coordinates.y * $tile_size
       @@gfx[@current_frame].draw(x, y, 0)
     end
+  end
+
+  def draw_ui
+    # control panel drawing
+    image = case @speed
+    when 0 then :speed_stop
+    when 1 then :speed_1
+    when 2 then :speed_2
+    when 3 then :speed_3
+    end
+    @@control_panel[image].draw(@ui_position.x, @ui_position.y, @ui_position.z)
   end
 end
 
@@ -105,13 +154,28 @@ end
 
 class Window < Gosu::Window
   def initialize
-    super(640, 480, false)
+    super(800, 600, false)
     self.caption = 'Gosu Game JAM - October 2021 - Theme : Chaos'
+    map_setup
+  end
+
+  def map_setup
+    @pallet = Pallet.new(Position.new(1, 1))
+    @conveyor = Conveyor.new(self)
+    @conveyor.add_piece(Position.new(2, 4))
+    @conveyor.add_piece(Position.new(3, 4))
+    @conveyor.add_piece(Position.new(4, 4))
+    @conveyor.add_piece(Position.new(5, 4))
+  end
+
+  def mouse_in?(x, y, w, h)
+    self.mouse_x >= x && self.mouse_x <= x + w && self.mouse_y >= y && self.mouse_y <= y + h
   end
 
   def button_down(id)
     super
     close! if id == Gosu::KB_ESCAPE
+    @conveyor.button_down(id)
 
     if id == Gosu::KB_SPACE
       colors = [Gosu::Color::RED, Gosu::Color::GREEN, Gosu::Color::BLUE]
@@ -120,15 +184,6 @@ class Window < Gosu::Window
   end
 
   def update
-    unless defined?(@pallet)
-      @pallet = Pallet.new(Position.new(1, 1))
-      @conveyor = Conveyor.new
-      @conveyor.add_piece(Position.new(2, 4))
-      @conveyor.add_piece(Position.new(3, 4))
-      @conveyor.add_piece(Position.new(4, 4))
-      @conveyor.add_piece(Position.new(5, 4))
-    end
-
     @conveyor.update
   end
 
@@ -138,6 +193,8 @@ class Window < Gosu::Window
       @pallet.draw
       @conveyor.draw
     end
+
+    @conveyor.draw_ui
   end
 end
 
